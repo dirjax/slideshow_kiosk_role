@@ -40,7 +40,7 @@
     dest: "/home/{{ kiosk_user }}/{{ conffiles.dest }}/{{ conffiles.name }}"
     owner: "{{ kiosk_user }}"
     group: "{{ kiosk_user }}"
-    mode: "{{ conffiles.mode | default('0640') }}"
+    mode: "{{ conffiles.mode | default('0644') }}"
   loop:
     - name: "xfce4-power-manager.xml"
       dest: ".config/xfce4/xfconf/xfce-perchannel-xml"
@@ -60,7 +60,7 @@
     dest: /etc/lightdm/lightdm.conf
     owner: root
     group: root
-    mode: "0640"
+    mode: "0644"
   notify: Restart lightdm
 
 - name: Deploy autostart template entries
@@ -69,7 +69,7 @@
     dest: "{{ conftemplates.dest }}/{{ conftemplates.name }}"
     owner: "{{ kiosk_user }}"
     group: "{{ kiosk_user }}"
-    mode: "{{ conftemplates.mode | default('0640') }}"
+    mode: "{{ conftemplates.mode | default('0644') }}"
   loop:
     - name: feh-screensaver.desktop
       dest: "/home/{{ kiosk_user }}/.config/autostart"
