@@ -1,0 +1,131 @@
+---
+
+- name: Install kiosk packages
+  ansible.builtin.apt:
+    name:
+      - lightdm
+      - xfce4
+      - xfce4-goodies
+      - feh
+      - xprintidle
+      - unclutter
+      - chromium
+      - cifs-utils
+    state: present
+    update_cache: true
+
+- name: Create kiosk user
+  ansible.builtin.user:
+    name: "{{ kiosk_user }}"
+    shell: /bin/bash
+    create_home: true
+
+- name: Ensure required directories exists
+  ansible.builtin.file:
+    path: "/home/{{ kiosk_user }}/{{ directories }}"
+    state: directory
+    owner: "{{ kiosk_user }}"
+    group: "{{ kiosk_user }}"
+    mode: "0750"
+  loop:
+    - ".config/xfce4/xfconf/xfce-perchannel-xml"
+    - ".config/autostart"
+    - "Pictures"
+  loop_control:
+    loop_var: directories
+
+- name: Deploy configuration files
+  ansible.builtin.copy:
+    src: "{{ conffiles.name }}"
+    dest: "/home/{{ kiosk_user }}/{{ conffiles.dest }}/{{ conffiles.name }}"
+    owner: "{{ kiosk_user }}"
+    group: "{{ kiosk_user }}"
+    mode: "{{ conffiles.mode | default('0640') }}"
+  loop:
+    - name: "xfce4-power-manager.xml"
+      dest: ".config/xfce4/xfconf/xfce-perchannel-xml"
+    - name: "xfce4-desktop.xml"
+      dest: ".config/xfce4/xfconf/xfce-perchannel-xml"
+    - name: "xfce4-panel.xml"
+      dest: ".config/xfce4/xfconf/xfce-perchannel-xml"
+    - name: "unclutter.desktop"
+      dest: ".config/autostart"
+  loop_control:
+    loop_var: conffiles
+  notify: Restart lightdm
+
+- name: Configure LightDM autologin
+  ansible.builtin.template:
+    src: lightdm.conf.j2
+    dest: /etc/lightdm/lightdm.conf
+    owner: root
+    group: root
+    mode: "0640"
+  notify: Restart lightdm
+
+- name: Deploy autostart template entries
+  ansible.builtin.template:
+    src: "{{ conftemplates.name }}.j2"
+    dest: "{{ conftemplates.dest }}/{{ conftemplates.name }}"
+    owner: "{{ kiosk_user }}"
+    group: "{{ kiosk_user }}"
+    mode: "{{ conftemplates.mode | default('0640') }}"
+  loop:
+    - name: feh-screensaver.desktop
+      dest: "/home/{{ kiosk_user }}/.config/autostart"
+    - name: feh-screensaver.sh
+      dest: "/home/{{ kiosk_user }}"
+      mode: "0755"
+  loop_control:
+    loop_var: conftemplates
+  notify: Restart lightdm
+
+- name: Deploy Chromium kiosk autostart entry
+  ansible.builtin.template:
+    src: "chromium-kiosk.desktop.j2"
+    dest: "/home/{{ kiosk_user }}/.config/autostart/chromium-kiosk.desktop"
+    owner: "{{ kiosk_user }}"
+    group: "{{ kiosk_user }}"
+    mode: "0640"
+  when: kiosk_chromium_enabled
+  notify: Restart lightdm
+
+- name: Remove Chromium kiosk autostart entry
+  ansible.builtin.file:
+    path: "/home/{{ kiosk_user }}/.config/autostart/chromium-kiosk.desktop"
+    state: absent
+  when: not kiosk_chromium_enabled
+  notify: Restart lightdm
+
+- name: Samba sync setup
+  when: kiosk_samba_enabled
+  block:
+    - name: Create samba mount point
+      ansible.builtin.file:
+        path: "{{ kiosk_samba_mount_point }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Deploy samba sync script
+      ansible.builtin.template:
+        src: kiosk_samba_sync.sh.j2
+        dest: /usr/local/bin/kiosk_samba_sync.sh
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Schedule samba sync cron job
+      ansible.builtin.template:
+        src: kiosk-samba-sync.cron.j2
+        dest: /etc/cron.d/kiosk-samba-sync
+        owner: root
+        group: root
+        mode: "0640"
+
+- name: Remove samba sync cron job
+  ansible.builtin.file:
+    path: /etc/cron.d/kiosk-samba-sync
+    state: absent
+  when: not kiosk_samba_enabled

@@ -1,0 +1,9 @@
+---
+galaxy_info:
+  author: dirjax
+  description: Debian Picture Frame setup feh slideshow, LightDM autologin samba sync and optional Chromium kiosk mode.
+  min_ansible_version: "2.9"
+  platforms:
+    - name: Debian
+      versions:
+        - all

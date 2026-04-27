@@ -1,0 +1,19 @@
+#!/bin/bash
+IDLE_TIME={{ kiosk_idle_ms }}
+PICTURES_DIR="/home/{{ kiosk_user }}/Pictures"
+DISPLAY=${DISPLAY:-:0}
+
+while true; do
+    IDLE=$(xprintidle 2>/dev/null || echo 0)
+
+    if [[ $IDLE -gt $IDLE_TIME ]]; then
+        if ! pgrep -x "feh" > /dev/null 2>&1; then
+            feh -z -Y -x -q -D {{ kiosk_slideshow_delay }} -B black -F -Z -r "$PICTURES_DIR" 2>/dev/null &
+        fi
+    else
+        if pgrep -x "feh" > /dev/null 2>&1; then
+            killall feh 2>/dev/null
+        fi
+    fi
+    sleep 2
+done

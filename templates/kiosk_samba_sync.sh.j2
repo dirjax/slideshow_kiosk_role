@@ -1,0 +1,12 @@
+#!/bin/bash
+SHARE="{{ kiosk_samba_share }}"
+MOUNT_POINT="{{ kiosk_samba_mount_point }}"
+PICTURES_DIR="/home/{{ kiosk_user }}/Pictures"
+
+[ -z "$SHARE" ] && exit 0
+
+mount -t cifs "$SHARE" "$MOUNT_POINT" -o guest,ro 2>/dev/null || exit 0
+
+rsync {{ kiosk_samba_rsync_options }} --chown={{ kiosk_user }}:{{ kiosk_user }} "$MOUNT_POINT/" "$PICTURES_DIR/"
+
+umount "$MOUNT_POINT"
