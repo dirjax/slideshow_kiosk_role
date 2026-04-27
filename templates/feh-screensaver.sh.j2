@@ -1,5 +1,5 @@
 #!/bin/bash
-IDLE_TIME={{ kiosk_idle_ms }}
+IDLE_TIME={{ kiosk_chromium_enabled | ternary(kiosk_idle_ms, 0) }}
 PICTURES_DIR="/home/{{ kiosk_user }}/Pictures"
 DISPLAY=${DISPLAY:-:0}
 
