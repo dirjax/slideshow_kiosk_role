@@ -6,6 +6,7 @@ An Ansible role to set up a Debian-based picture frame/slideshow kiosk using XFC
 
 - Ansible >= 2.9
 - Debian-based system
+- python3-apt
 
 ## Role Variables
 
