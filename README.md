@@ -56,7 +56,6 @@ None.
 
 dirjax
 
-## License
+## LICENSE
 
-MIT</content>
-<parameter name="filePath">/Users/pmouthaan/perso/repos/slideshow_kiosk_role/README.md
+enjoy 
