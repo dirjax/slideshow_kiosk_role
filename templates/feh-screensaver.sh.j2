@@ -26,9 +26,7 @@ dir_signature() {
     fi
 
     local filehash
-    filehash=$(find "$PICTURES_DIR" -type f \(
-        -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.gif' -o -iname '*.bmp' -o -iname '*.tiff' -o -iname '*.webp' -o -iname '*.heic'
-    \) -printf '%P\t%T@\n' 2>/dev/null | sort | md5sum | awk '{print $1}')
+    filehash=$(find "$PICTURES_DIR" -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.gif' -o -iname '*.bmp' -o -iname '*.tiff' -o -iname '*.webp' -o -iname '*.heic' \) -printf '%P\t%T@\n' 2>/dev/null | sort | md5sum | awk '{print $1}')
 
     return ${filehash}
 }
@@ -69,9 +67,6 @@ build_filelist() {
     return 1
 }
 
-# Build initial filelist
-build_filelist >/dev/null 2>&1
-
 start_feh() {
     if [[ -f "$FILELIST" ]]; then
         feh -z -Y -x -q -D {{ kiosk_slideshow_delay }} -B black -F -Z --filelist "$FILELIST" 2>/dev/null &
@@ -81,6 +76,9 @@ start_feh() {
         FILELIST_MTIME=0
     fi
 }
+
+# Build initial filelist
+build_filelist >/dev/null 2>&1
 
 while true; do
     IDLE=$(xprintidle 2>/dev/null || echo 0)
