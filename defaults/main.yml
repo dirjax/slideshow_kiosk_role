@@ -12,5 +12,5 @@ kiosk_slideshow_image_dir: "/home/{{ kiosk_user }}/Pictures"
 kiosk_samba_enabled: false
 kiosk_samba_share: ""
 kiosk_samba_mount_point: /mnt/kiosk-smb
-kiosk_samba_sync_schedule: "*/30 * * * *"
+kiosk_samba_sync_schedule: "*/6 * * * *"
 kiosk_samba_rsync_options: "-av --delete-after"
