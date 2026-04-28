@@ -22,6 +22,7 @@
     shell: /bin/bash
     create_home: true
 
+
 - name: Ensure required directories exists
   ansible.builtin.file:
     path: "/home/{{ kiosk_user }}/{{ directories }}"
@@ -35,6 +36,7 @@
     - "Pictures"
   loop_control:
     loop_var: directories
+  tags: [kiosk, feh]
 
 - name: Deploy configuration files
   ansible.builtin.copy:
@@ -81,6 +83,7 @@
   loop_control:
     loop_var: conftemplates
   notify: Restart lightdm
+  tags: [feh]
 
 - name: Deploy Chromium kiosk autostart entry
   ansible.builtin.template:
@@ -91,6 +94,7 @@
     mode: "0640"
   when: kiosk_chromium_enabled
   notify: Restart lightdm
+  tags: [kiosk]
 
 - name: Remove Chromium kiosk autostart entry
   ansible.builtin.file:
@@ -98,6 +102,7 @@
     state: absent
   when: not kiosk_chromium_enabled
   notify: Restart lightdm
+  tags: [kiosk]
 
 - name: Samba sync setup
   when: kiosk_samba_enabled
@@ -125,9 +130,11 @@
         owner: root
         group: root
         mode: "0640"
+  tags: [samba]
 
 - name: Remove samba sync cron job
   ansible.builtin.file:
     path: /etc/cron.d/kiosk-samba-sync
     state: absent
   when: not kiosk_samba_enabled
+  tags: [samba]
