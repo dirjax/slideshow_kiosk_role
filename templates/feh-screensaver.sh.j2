@@ -78,19 +78,7 @@ build_filelist() {
     return 1
 }
 
-ensure_filelist() {
-    local new_sig
-    new_sig=$(dir_signature)
-    if [[ "$new_sig" != "$DIR_SIGNATURE" ]]; then
-        DIR_SIGNATURE="$new_sig"
-        build_filelist
-        return $?
-    fi
-    return 1
-}
-
 start_feh() {
-    ensure_filelist >/dev/null 2>&1
     if [[ -f "$FILELIST" ]]; then
         feh -z -Y -x -q -D {{ kiosk_slideshow_delay }} -B black -F -Z --filelist "$FILELIST" 2>/dev/null &
         FEH_MODE="filelist"
@@ -106,20 +94,30 @@ while true; do
     IDLE=$(xprintidle 2>/dev/null || echo 0)
 
     if [[ $IDLE -gt $IDLE_TIME ]]; then
-        if pgrep -x "feh" > /dev/null 2>&1; then
-            if [[ "$FEH_MODE" == "filelist" && -f "$FILELIST" ]]; then
-                CURRENT_SIG=$(dir_signature)
-                CURRENT_MTIME=$(filelist_mtime)
-                if [[ "$CURRENT_SIG" != "$DIR_SIGNATURE" || "$CURRENT_MTIME" != "$FILELIST_MTIME" ]]; then
-                    killall feh 2>/dev/null
-                    start_feh
-                fi
-            else
+        # Check for filelist changes
+        CURRENT_SIG=$(dir_signature)
+        FILELIST_CHANGED=0
+        if [[ "$CURRENT_SIG" != "$DIR_SIGNATURE" ]]; then
+            DIR_SIGNATURE="$CURRENT_SIG"
+            if build_filelist; then
+                FILELIST_CHANGED=1
+            fi
+        fi
+        if [[ "$FEH_MODE" == "filelist" && -f "$FILELIST" ]]; then
+            CURRENT_MTIME=$(filelist_mtime)
+            if [[ "$CURRENT_MTIME" != "$FILELIST_MTIME" ]]; then
+                FILELIST_CHANGED=1
+            fi
+        fi
+        if [[ $FILELIST_CHANGED -eq 1 ]]; then
+            if pgrep -x "feh" > /dev/null 2>&1; then
                 killall feh 2>/dev/null
+            fi
+            start_feh
+        else
+            if ! pgrep -x "feh" > /dev/null 2>&1; then
                 start_feh
             fi
-        else
-            start_feh
         fi
     else
         if pgrep -x "feh" > /dev/null 2>&1; then
