@@ -6,7 +6,7 @@ kiosk_slideshow_delay: 120
 kiosk_chromium_enabled: false
 
 kiosk_slideshow_orientation: "all" # Options: "landscape", "portrait", "all"
-kiosk_slideshow_filelist: "feh-screensaver.filelist"
+kiosk_slideshow_filelist: "/home/{{ kiosk_user }}/feh-screensaver.filelist"
 kiosk_slideshow_image_dir: "/home/{{ kiosk_user }}/Pictures"
 
 kiosk_samba_enabled: false
