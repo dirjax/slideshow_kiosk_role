@@ -28,7 +28,7 @@ dir_signature() {
     local filehash
     filehash=$(find "$PICTURES_DIR" -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.gif' -o -iname '*.bmp' -o -iname '*.tiff' -o -iname '*.webp' -o -iname '*.heic' \) -printf '%P\t%T@\n' 2>/dev/null | sort | md5sum | awk '{print $1}')
 
-    return ${filehash}
+    echo "${filehash}"
 }
 
 build_filelist() {
