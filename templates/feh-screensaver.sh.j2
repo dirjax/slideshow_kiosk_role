@@ -27,17 +27,15 @@ dir_signature() {
 
     local filehash
     filehash=$(find "$PICTURES_DIR" -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.gif' -o -iname '*.bmp' -o -iname '*.tiff' -o -iname '*.webp' -o -iname '*.heic' \) -printf '%P\t%T@\n' 2>/dev/null | sort | md5sum | awk '{print $1}')
-
     echo "${filehash}"
 }
 
-build_filelist() {
+build_filelist() { 
     local tmpfile file dims width height
-    tmpfile=$(mktemp) || return 1
+    tmpfile=$(mktemp) || return 1 # Ensure we have a temp file to work with
 
     if [[ ! -d "$PICTURES_DIR" ]]; then
         rm -f "$tmpfile"
-        echo "Pictures directory '$PICTURES_DIR' does not exist." >&2
         return 1
     fi
 
@@ -70,50 +68,52 @@ build_filelist() {
 start_feh() {
     if [[ -f "$FILELIST" ]]; then
         feh -z -Y -x -q -D {{ kiosk_slideshow_delay }} -B black -F -Z --filelist "$FILELIST" 2>/dev/null &
-        FILELIST_MTIME=$(filelist_mtime)
     else
         feh -z -Y -x -q -D {{ kiosk_slideshow_delay }} -B black -F -Z -r "$PICTURES_DIR" 2>/dev/null &
-        FILELIST_MTIME=0
     fi
 }
 
-# Build initial filelist
-build_filelist >/dev/null 2>&1
+# Build initial filelist if it doesn't exist
+if [[ ! -f "$FILELIST" ]]; then
+    build_filelist >/dev/null 2>&1 
+fi
 
 while true; do
     IDLE=$(xprintidle 2>/dev/null || echo 0)
 
+    # Always check for filelist changes, regardless of idle state
+    CURRENT_SIG=$(dir_signature)
+    FILELIST_CHANGED=0
+    if [[ "$CURRENT_SIG" != "$DIR_SIGNATURE" ]]; then
+        build_filelist >/dev/null 2>&1 
+        DIR_SIGNATURE="$CURRENT_SIG"
+    fi
+
+    # Check if the filelist has changed based on mtime
+    if [[ -f "$FILELIST" ]]; then
+        CURRENT_MTIME=$(filelist_mtime)
+        if [[ "$CURRENT_MTIME" != "$FILELIST_MTIME" ]]; then
+            FILELIST_CHANGED=1
+            FILELIST_MTIME="$CURRENT_MTIME"
+        fi
+    fi
+
     if [[ $IDLE -gt $IDLE_TIME ]]; then
-        # Check for filelist changes
-        CURRENT_SIG=$(dir_signature)
-        FILELIST_CHANGED=0
-        if [[ "$CURRENT_SIG" != "$DIR_SIGNATURE" ]]; then
-            DIR_SIGNATURE="$CURRENT_SIG"
-            if build_filelist; then
-                FILELIST_CHANGED=1
-            fi
-        fi
-        if [[ -f "$FILELIST" ]]; then
-            CURRENT_MTIME=$(filelist_mtime)
-            if [[ "$CURRENT_MTIME" != "$FILELIST_MTIME" ]]; then
-                FILELIST_CHANGED=1
-            fi
-        fi
+
+        # If the filelist has changed, make sure to shutdown feh so it can be restarted with the new list
         if [[ $FILELIST_CHANGED -eq 1 ]]; then
-            if pgrep -x "feh" > /dev/null 2>&1; then
                 killall feh 2>/dev/null
-            fi
+        fi
+
+        # start feh if it's not already running
+        if ! pgrep -x "feh" > /dev/null 2>&1; then
             start_feh
-        else
-            if ! pgrep -x "feh" > /dev/null 2>&1; then
-                start_feh
-            fi
         fi
     else
         if pgrep -x "feh" > /dev/null 2>&1; then
             killall feh 2>/dev/null
-            FILELIST_MTIME=0
         fi
+
     fi
 
     sleep 2
