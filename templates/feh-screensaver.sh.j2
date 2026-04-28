@@ -6,11 +6,7 @@ DISPLAY=${DISPLAY:-:0}
 ORIENTATION="{{ kiosk_slideshow_orientation }}"
 FEH_MODE=""
 FILELIST_MTIME=0
-DIR_SIGNATURE=""
-
-if [[ -n "$FILELIST" && "$FILELIST" != /* ]]; then
-    FILELIST="/home/{{ kiosk_user }}/$FILELIST"
-fi
+DIR_SIGNATURE=0
 
 filelist_mtime() {
     if [[ -f "$FILELIST" ]]; then
@@ -63,11 +59,6 @@ build_filelist() {
         done > "$tmpfile"
     fi
 
-    if [[ ! -s "$tmpfile" ]]; then
-        rm -f "$tmpfile"
-        return 1
-    fi
-
     if [[ ! -f "$FILELIST" ]] || ! cmp -s "$tmpfile" "$FILELIST"; then
         mv "$tmpfile" "$FILELIST"
         chmod 0644 "$FILELIST"
@@ -77,6 +68,9 @@ build_filelist() {
     rm -f "$tmpfile"
     return 1
 }
+
+# Build initial filelist
+build_filelist >/dev/null 2>&1
 
 start_feh() {
     if [[ -f "$FILELIST" ]]; then
