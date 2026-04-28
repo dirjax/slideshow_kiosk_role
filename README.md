@@ -16,6 +16,8 @@ An Ansible role to set up a Debian-based picture frame/slideshow kiosk using XFC
 - `kiosk_chromium_url`: URL to display in Chromium kiosk mode (default: `https://xkcd.com/`)
 - `kiosk_idle_ms`: Idle time in milliseconds before starting slideshow (default: `60000`)
 - `kiosk_slideshow_delay`: Delay between slides in seconds (default: `120`)
+- `kiosk_slideshow_filelist`: Filelist filename or path for `feh` filelist mode. If relative, the path is resolved under the kiosk home directory (default: `"feh-screensaver.filelist"`). The filelist is generated automatically next to `feh-screensaver.sh`.
+- `kiosk_slideshow_image_dir`: Directory containing slideshow images (default: `"/home/{{ kiosk_user }}/Pictures"`).
 - `kiosk_chromium_enabled`: Enable Chromium kiosk mode (default: `false`)
 
 ### Samba Sync Variables

@@ -1,19 +1,133 @@
 #!/bin/bash
 IDLE_TIME={{ kiosk_chromium_enabled | ternary(kiosk_idle_ms, 0) }}
-PICTURES_DIR="/home/{{ kiosk_user }}/Pictures"
+PICTURES_DIR="{{ kiosk_slideshow_image_dir }}"
+FILELIST="{{ kiosk_slideshow_filelist }}"
 DISPLAY=${DISPLAY:-:0}
+ORIENTATION="{{ kiosk_slideshow_orientation }}"
+FEH_MODE=""
+FILELIST_MTIME=0
+DIR_SIGNATURE=""
+
+if [[ -n "$FILELIST" && "$FILELIST" != /* ]]; then
+    FILELIST="/home/{{ kiosk_user }}/$FILELIST"
+fi
+
+filelist_mtime() {
+    if [[ -f "$FILELIST" ]]; then
+        stat -c %Y "$FILELIST" 2>/dev/null || echo 0
+    else
+        echo 0
+    fi
+}
+
+dir_signature() {
+    if [[ ! -d "$PICTURES_DIR" ]]; then
+        echo ""
+        return
+    fi
+
+    local filehash
+    filehash=$(find "$PICTURES_DIR" -type f \(
+        -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.gif' -o -iname '*.bmp' -o -iname '*.tiff' -o -iname '*.webp' -o -iname '*.heic'
+    \) -printf '%P\t%T@\n' 2>/dev/null | sort | md5sum | awk '{print $1}')
+
+    echo "${ORIENTATION}:${filehash}"
+}
+
+build_filelist() {
+    local tmpfile file dims width height
+    tmpfile=$(mktemp) || return 1
+
+    if [[ ! -d "$PICTURES_DIR" ]]; then
+        rm -f "$tmpfile"
+        return 1
+    fi
+
+    if [[ "$ORIENTATION" == "all" ]]; then
+        find "$PICTURES_DIR" -type f \(
+            -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.gif' -o -iname '*.bmp' -o -iname '*.tiff' -o -iname '*.webp' -o -iname '*.heic'
+        \) -print0 2>/dev/null | sort -z | while IFS= read -r -d '' file; do
+            printf '%s\n' "$file"
+        done > "$tmpfile"
+    else
+        find "$PICTURES_DIR" -type f \(
+            -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.gif' -o -iname '*.bmp' -o -iname '*.tiff' -o -iname '*.webp' -o -iname '*.heic'
+        \) -print0 2>/dev/null | sort -z | while IFS= read -r -d '' file; do
+            if dims=$(identify -format '%w %h' "$file" 2>/dev/null); then
+                width=${dims%% *}
+                height=${dims##* }
+                if [[ "$ORIENTATION" == "landscape" && $width -gt $height ]] || [[ "$ORIENTATION" == "portrait" && $height -gt $width ]]; then
+                    printf '%s\n' "$file"
+                fi
+            fi
+        done > "$tmpfile"
+    fi
+
+    if [[ ! -s "$tmpfile" ]]; then
+        rm -f "$tmpfile"
+        return 1
+    fi
+
+    if [[ ! -f "$FILELIST" ]] || ! cmp -s "$tmpfile" "$FILELIST"; then
+        mv "$tmpfile" "$FILELIST"
+        chmod 0644 "$FILELIST"
+        return 0
+    fi
+
+    rm -f "$tmpfile"
+    return 1
+}
+
+ensure_filelist() {
+    local new_sig
+    new_sig=$(dir_signature)
+    if [[ "$new_sig" != "$DIR_SIGNATURE" ]]; then
+        DIR_SIGNATURE="$new_sig"
+        build_filelist
+        return $?
+    fi
+    return 1
+}
+
+start_feh() {
+    ensure_filelist >/dev/null 2>&1
+    if [[ -f "$FILELIST" ]]; then
+        feh -z -Y -x -q -D {{ kiosk_slideshow_delay }} -B black -F -Z --filelist "$FILELIST" 2>/dev/null &
+        FEH_MODE="filelist"
+        FILELIST_MTIME=$(filelist_mtime)
+    else
+        feh -z -Y -x -q -D {{ kiosk_slideshow_delay }} -B black -F -Z -r "$PICTURES_DIR" 2>/dev/null &
+        FEH_MODE="directory"
+        FILELIST_MTIME=0
+    fi
+}
 
 while true; do
     IDLE=$(xprintidle 2>/dev/null || echo 0)
 
     if [[ $IDLE -gt $IDLE_TIME ]]; then
-        if ! pgrep -x "feh" > /dev/null 2>&1; then
-            feh -z -Y -x -q -D {{ kiosk_slideshow_delay }} -B black -F -Z -r "$PICTURES_DIR" 2>/dev/null &
+        if pgrep -x "feh" > /dev/null 2>&1; then
+            if [[ "$FEH_MODE" == "filelist" && -f "$FILELIST" ]]; then
+                CURRENT_SIG=$(dir_signature)
+                CURRENT_MTIME=$(filelist_mtime)
+                if [[ "$CURRENT_SIG" != "$DIR_SIGNATURE" || "$CURRENT_MTIME" != "$FILELIST_MTIME" ]]; then
+                    killall feh 2>/dev/null
+                    start_feh
+                fi
+            else
+                killall feh 2>/dev/null
+                start_feh
+            fi
+        else
+            start_feh
         fi
     else
         if pgrep -x "feh" > /dev/null 2>&1; then
             killall feh 2>/dev/null
+            FEH_MODE=""
+            FILELIST_MTIME=0
         fi
     fi
+
     sleep 2
 done
