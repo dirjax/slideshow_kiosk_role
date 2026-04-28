@@ -1,12 +1,15 @@
 #!/bin/bash
 IDLE_TIME={{ kiosk_chromium_enabled | ternary(kiosk_idle_ms, 0) }}
-PICTURES_DIR="{{ kiosk_slideshow_image_dir }}"
+
 FILELIST="{{ kiosk_slideshow_filelist }}"
-DISPLAY=${DISPLAY:-:0}
-ORIENTATION="{{ kiosk_slideshow_orientation }}"
-FEH_MODE=""
 FILELIST_MTIME=0
+
+PICTURES_DIR="{{ kiosk_slideshow_image_dir }}"
 DIR_SIGNATURE=0
+
+ORIENTATION="{{ kiosk_slideshow_orientation }}"
+DISPLAY=${DISPLAY:-:0}
+
 
 filelist_mtime() {
     if [[ -f "$FILELIST" ]]; then
@@ -27,7 +30,7 @@ dir_signature() {
         -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.gif' -o -iname '*.bmp' -o -iname '*.tiff' -o -iname '*.webp' -o -iname '*.heic'
     \) -printf '%P\t%T@\n' 2>/dev/null | sort | md5sum | awk '{print $1}')
 
-    echo "${ORIENTATION}:${filehash}"
+    return ${filehash}
 }
 
 build_filelist() {
@@ -36,19 +39,16 @@ build_filelist() {
 
     if [[ ! -d "$PICTURES_DIR" ]]; then
         rm -f "$tmpfile"
+        echo "Pictures directory '$PICTURES_DIR' does not exist." >&2
         return 1
     fi
 
     if [[ "$ORIENTATION" == "all" ]]; then
-        find "$PICTURES_DIR" -type f \(
-            -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.gif' -o -iname '*.bmp' -o -iname '*.tiff' -o -iname '*.webp' -o -iname '*.heic'
-        \) -print0 2>/dev/null | sort -z | while IFS= read -r -d '' file; do
+        find "$PICTURES_DIR" -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.gif' -o -iname '*.bmp' -o -iname '*.tiff' -o -iname '*.webp' -o -iname '*.heic' \) -print0 2>/dev/null | sort -z | while IFS= read -r -d '' file; do
             printf '%s\n' "$file"
         done > "$tmpfile"
     else
-        find "$PICTURES_DIR" -type f \(
-            -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.gif' -o -iname '*.bmp' -o -iname '*.tiff' -o -iname '*.webp' -o -iname '*.heic'
-        \) -print0 2>/dev/null | sort -z | while IFS= read -r -d '' file; do
+        find "$PICTURES_DIR" -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.gif' -o -iname '*.bmp' -o -iname '*.tiff' -o -iname '*.webp' -o -iname '*.heic' \) -print0 2>/dev/null | sort -z | while IFS= read -r -d '' file; do
             if dims=$(identify -format '%w %h' "$file" 2>/dev/null); then
                 width=${dims%% *}
                 height=${dims##* }
@@ -75,11 +75,9 @@ build_filelist >/dev/null 2>&1
 start_feh() {
     if [[ -f "$FILELIST" ]]; then
         feh -z -Y -x -q -D {{ kiosk_slideshow_delay }} -B black -F -Z --filelist "$FILELIST" 2>/dev/null &
-        FEH_MODE="filelist"
         FILELIST_MTIME=$(filelist_mtime)
     else
         feh -z -Y -x -q -D {{ kiosk_slideshow_delay }} -B black -F -Z -r "$PICTURES_DIR" 2>/dev/null &
-        FEH_MODE="directory"
         FILELIST_MTIME=0
     fi
 }
@@ -97,7 +95,7 @@ while true; do
                 FILELIST_CHANGED=1
             fi
         fi
-        if [[ "$FEH_MODE" == "filelist" && -f "$FILELIST" ]]; then
+        if [[ -f "$FILELIST" ]]; then
             CURRENT_MTIME=$(filelist_mtime)
             if [[ "$CURRENT_MTIME" != "$FILELIST_MTIME" ]]; then
                 FILELIST_CHANGED=1
@@ -116,7 +114,6 @@ while true; do
     else
         if pgrep -x "feh" > /dev/null 2>&1; then
             killall feh 2>/dev/null
-            FEH_MODE=""
             FILELIST_MTIME=0
         fi
     fi
