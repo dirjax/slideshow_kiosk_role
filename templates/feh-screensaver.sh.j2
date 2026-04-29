@@ -2,7 +2,6 @@
 IDLE_TIME={{ kiosk_chromium_enabled | ternary(kiosk_idle_ms, 0) }}
 
 FILELIST="{{ kiosk_slideshow_filelist }}"
-FILELIST_MTIME=0
 
 PICTURES_DIR="{{ kiosk_slideshow_image_dir }}"
 DIR_SIGNATURE=0
@@ -12,14 +11,6 @@ DISPLAY=${DISPLAY:-:0}
 {% if kiosk_slideshow_orientation == 'portrait' %}
 xrandr --output HDMI-1 --rotate right
 {% endif %}
-
-filelist_mtime() {
-    if [[ -f "$FILELIST" ]]; then
-        stat -c %Y "$FILELIST" 2>/dev/null || echo 0
-    else
-        echo 0
-    fi
-}
 
 dir_signature() {
     if [[ ! -d "$PICTURES_DIR" ]]; then
@@ -58,6 +49,7 @@ build_filelist() {
     fi
 
     if [[ ! -f "$FILELIST" ]] || ! cmp -s "$tmpfile" "$FILELIST"; then
+        rm "$FILELIST"
         mv "$tmpfile" "$FILELIST"
         chmod 0644 "$FILELIST"
         return 0
@@ -77,27 +69,19 @@ start_feh() {
 
 # Build initial filelist if it doesn't exist
 if [[ ! -f "$FILELIST" ]]; then
-    build_filelist >/dev/null 2>&1 
+    build_filelist
 fi
 
 while true; do
     IDLE=$(xprintidle 2>/dev/null || echo 0)
+    FILELIST_CHANGED=0
 
     # Always check for filelist changes, regardless of idle state
     CURRENT_SIG=$(dir_signature)
-    FILELIST_CHANGED=0
     if [[ "$CURRENT_SIG" != "$DIR_SIGNATURE" ]]; then
-        build_filelist >/dev/null 2>&1 
+        build_filelist
+        FILELIST_CHANGED=1
         DIR_SIGNATURE="$CURRENT_SIG"
-    fi
-
-    # Check if the filelist has changed based on mtime
-    if [[ -f "$FILELIST" ]]; then
-        CURRENT_MTIME=$(filelist_mtime)
-        if [[ "$CURRENT_MTIME" != "$FILELIST_MTIME" ]]; then
-            FILELIST_CHANGED=1
-            FILELIST_MTIME="$CURRENT_MTIME"
-        fi
     fi
 
     if [[ $IDLE -gt $IDLE_TIME ]]; then
@@ -118,5 +102,5 @@ while true; do
 
     fi
 
-    sleep 2
+    sleep 1
 done
