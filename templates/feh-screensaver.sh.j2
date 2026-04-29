@@ -9,7 +9,9 @@ DIR_SIGNATURE=0
 
 ORIENTATION="{{ kiosk_slideshow_orientation }}"
 DISPLAY=${DISPLAY:-:0}
-
+{% if kiosk_slideshow_orientation == 'portrait' %}
+xrandr --output HDMI-1 --rotate right
+{% endif %}
 
 filelist_mtime() {
     if [[ -f "$FILELIST" ]]; then
@@ -48,7 +50,7 @@ build_filelist() {
             if dims=$(identify -format '%w %h' "$file" 2>/dev/null); then
                 width=${dims%% *}
                 height=${dims##* }
-                if [[ "$ORIENTATION" == "landscape" && $width -gt $height ]] || [[ "$ORIENTATION" == "portrait" && $height -gt $width ]]; then
+                if [[ "$ORIENTATION" == "landscape" && $width -ge $height ]] || [[ "$ORIENTATION" == "portrait" && $height -ge $width ]]; then
                     printf '%s\n' "$file"
                 fi
             fi
