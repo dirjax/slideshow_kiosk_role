@@ -16,8 +16,9 @@ An Ansible role to set up a Debian-based picture frame/slideshow kiosk using XFC
 - `kiosk_chromium_url`: URL to display in Chromium kiosk mode (default: `https://xkcd.com/`)
 - `kiosk_idle_ms`: Idle time in milliseconds before starting slideshow (default: `60000`)
 - `kiosk_slideshow_delay`: Delay between slides in seconds (default: `120`)
-- `kiosk_slideshow_filelist`: Filelist filename or path for `feh` filelist mode. If relative, the path is resolved under the kiosk home directory (default: `"feh-screensaver.filelist"`). The filelist is generated automatically next to `feh-screensaver.sh`.
+- `kiosk_slideshow_filelist`: Absolute path for the `feh` filelist file (default: `"/home/{{ kiosk_user }}/feh-screensaver.filelist"`). Generated automatically by the role.
 - `kiosk_slideshow_image_dir`: Directory containing slideshow images (default: `"/home/{{ kiosk_user }}/Pictures"`).
+- `kiosk_slideshow_orientation`: Filter images by orientation before building the filelist. Options: `"landscape"`, `"portrait"`, `"all"` (default: `"all"`).
 - `kiosk_chromium_enabled`: Enable Chromium kiosk mode (default: `false`)
 
 ### Samba Sync Variables
@@ -25,7 +26,7 @@ An Ansible role to set up a Debian-based picture frame/slideshow kiosk using XFC
 - `kiosk_samba_enabled`: Enable Samba synchronization (default: `false`)
 - `kiosk_samba_share`: Samba share path (default: `""`)
 - `kiosk_samba_mount_point`: Local mount point for Samba share (default: `/mnt/kiosk-smb`)
-- `kiosk_samba_sync_schedule`: Cron schedule for sync (default: `"*/30 * * * *"`)
+- `kiosk_samba_sync_schedule`: Cron schedule for sync (default: `"*/6 * * * *"`)
 - `kiosk_samba_rsync_options`: Rsync options for sync (default: `"-av --delete-after"`)
 
 ## Dependencies
@@ -60,4 +61,4 @@ dirjax
 
 ## LICENSE
 
-enjoy 
+enjoy
