@@ -1,6 +1,6 @@
 #!/bin/bash
 IDLE_TIME={{ kiosk_chromium_enabled | ternary(kiosk_idle_ms, 0) }}
-
+DELAY_TIME={{ kiosk_slideshow_delay  }}
 FILELIST="{{ kiosk_slideshow_filelist }}"
 
 PICTURES_DIR="{{ kiosk_slideshow_image_dir }}"
@@ -61,9 +61,9 @@ build_filelist() {
 
 start_feh() {
     if [[ -f "$FILELIST" ]]; then
-        feh -z -Y -x -q -D {{ kiosk_slideshow_delay }} -B black -F -Z --filelist "$FILELIST" 2>/dev/null &
+        feh -z -Y -x -q -D $DELAY_TIME -B black -F -Z --filelist "$FILELIST" 2>/dev/null &
     else
-        feh -z -Y -x -q -D {{ kiosk_slideshow_delay }} -B black -F -Z -r "$PICTURES_DIR" 2>/dev/null &
+        feh -z -Y -x -q -D $DELAY_TIME -B black -F -Z -r "$PICTURES_DIR" 2>/dev/null &
     fi
 }
 
