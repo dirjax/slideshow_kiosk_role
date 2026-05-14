@@ -1,0 +1,27 @@
+#!/bin/bash
+# X initialization script for kiosk environment
+# Starts Openbox window manager with necessary services and applications
+
+# Load X resources if they exist
+[[ -f ~/.Xresources ]] && xrdb -merge ~/.Xresources
+
+# Disable screensaver and DPMS (display power management)
+xset s off
+xset -dpms
+
+# Hide mouse cursor immediately and keep it hidden
+unclutter -idle 0 -root &
+
+# Launch feh screensaver
+~/feh-screensaver.sh &
+
+{% if kiosk_chromium_enabled %}
+# Launch Chromium in kiosk mode after a short delay to ensure Openbox is ready
+(
+  sleep 2
+  chromium --kiosk --noerrdialogs --disable-infobars --app={{ kiosk_chromium_url }} --touch-events=enabled &
+) &
+{% endif %}
+
+# Start Openbox window manager
+exec openbox
