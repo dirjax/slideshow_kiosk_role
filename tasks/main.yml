@@ -23,6 +23,18 @@
     shell: /bin/bash
     create_home: true
 
+- name: Create autologin configuration for getty
+  ansible.builtin.copy:
+    content: |
+      [Service]
+      ExecStart=
+      ExecStart=-/sbin/agetty --autologin {{ kiosk_user }} --noclear %I $TERM
+    dest: "/etc/systemd/system/getty@tty1.service"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart getty service
+
 - name: Ensure required directories exists
   ansible.builtin.file:
     path: "/home/{{ kiosk_user }}/{{ directories }}"

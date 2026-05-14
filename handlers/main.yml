@@ -2,5 +2,12 @@
 - name: Restart kiosk X session
   ansible.builtin.shell: |
     pkill -u {{ kiosk_user }} openbox || true
-  become: yes
   changed_when: false
+
+
+- name: Restart getty service
+  ansible.builtin.systemd_service:
+    name: getty@tty1
+    daemon_reload: true
+    enabled: true
+    state: restarted
