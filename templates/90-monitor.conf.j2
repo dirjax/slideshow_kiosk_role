@@ -1,7 +1,8 @@
 {% if (kiosk_display_type|d('')) == "dsi-waveshare" %}
 Section "Monitor"
 	Identifier "DSI-1"
-{% if (screen_rotation|d('')) == "right" %}	Option "Rotate" "right" {% endif %}
+{% if (screen_rotation|d('')) == "right" %}	Option "Rotate" "right" 
+{% endif %}
 	Option "PreferredMode" "1280x800"
 EndSection
 {% endif %}

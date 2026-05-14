@@ -59,10 +59,10 @@
     group: "{{ config_template.group|default(kiosk_user) }}"
     mode: "{{ config_template.mode|default('0755') }}"
   loop:
-    - {"src": "getty_service.j2", "dest": "/etc/systemd/system/getty@tty1.service", owner: "root", group: "root"}
+    - {"src": "getty_service.j2", "dest": "/etc/systemd/system/getty@tty1.service", owner: "root", group: "root", mode: "0644"}
     - {"src": "xinitrc.j2", "dest": "/home/{{ kiosk_user }}/.xinitrc"}
-    - {"src": "feh-screensaver.sh.j2", "dest": "/home/{{ kiosk_user }}/feh-screensaver.sh", mode: "0755"}
-    - {"src": "90-monitor.conf.j2", "dest": "/usr/share/X11/xorg.conf.d/90-monitor.conf", owner: "root", group: "root"}
+    - {"src": "feh-screensaver.sh.j2", "dest": "/home/{{ kiosk_user }}/feh-screensaver.sh"}
+    - {"src": "90-monitor.conf.j2", "dest": "/usr/share/X11/xorg.conf.d/90-monitor.conf", owner: "root", group: "root", mode: "0644"}
   loop_control:
     loop_var: config_template
   notify: Restart getty service
@@ -71,8 +71,7 @@
   when: kiosk_display_type == "dsi-waveshare"
   ansible.builtin.blockinfile:
     path: /boot/firmware/config.txt
-    create: true
-    insertafter: "dtoverlay=v4c-kms-v3d"
+    insertafter: "dtoverlay=vc4-kms-v3d"
     block: |
       dtoverlay=vc4-kms-dsi-waveshare-panel-v2,10_1_inch_a
       display_default_lcd=1
