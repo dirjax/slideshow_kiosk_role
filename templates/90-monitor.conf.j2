@@ -1,0 +1,7 @@
+Section "Monitor"
+{% if (kiosk_display_type|d('')) == "dsi-waveshare" %}	Identifier "DSI-1"
+{% else %}	Identifier "HDMI-1"
+{% endif %}
+{% if (screen_rotation|d('')) == "right" %}	Option "Rotate" "right" 
+{% endif %}
+EndSection
