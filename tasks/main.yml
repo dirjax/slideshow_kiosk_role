@@ -53,7 +53,7 @@
 
 - name: Deploy configuration templates
   ansible.builtin.template:
-    src: "{{ config_template.src }}"}
+    src: "{{ config_template.src }}"
     dest: "{{ config_template.dest }}"
     owner: "{{ config_template.owner|default(kiosk_user) }}"
     group: "{{ config_template.group|default(kiosk_user) }}"
