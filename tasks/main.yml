@@ -3,17 +3,18 @@
 - name: Install kiosk packages
   ansible.builtin.apt:
     name:
-      - openbox
-      - xserver-xorg-core
-      - xauth
-      - x11-utils
+      - chromium
+      - cifs-utils
       - feh
       - imagemagick
       - libheif1
-      - xprintidle
+      - openbox
       - unclutter
-      - chromium
-      - cifs-utils
+      - x11-utils
+      - xauth
+      - xinit
+      - xprintidle
+      - xserver-xorg-core
     state: present
     update_cache: true
 
