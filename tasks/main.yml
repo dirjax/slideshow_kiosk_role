@@ -3,9 +3,10 @@
 - name: Install kiosk packages
   ansible.builtin.apt:
     name:
-      - lightdm
-      - xfce4
-      - xfce4-goodies
+      - openbox
+      - xserver-xorg-core
+      - xauth
+      - x11-utils
       - feh
       - imagemagick
       - libheif1
@@ -22,7 +23,6 @@
     shell: /bin/bash
     create_home: true
 
-
 - name: Ensure required directories exists
   ansible.builtin.file:
     path: "/home/{{ kiosk_user }}/{{ directories }}"
@@ -31,78 +31,52 @@
     group: "{{ kiosk_user }}"
     mode: "0755"
   loop:
-    - ".config/xfce4/xfconf/xfce-perchannel-xml"
-    - ".config/autostart"
-    - "Pictures"
+    - ".config/openbox"
+    - "{{ kiosk_slideshow_image_dir }}" 
   loop_control:
     loop_var: directories
   tags: [kiosk, feh]
 
-- name: Deploy configuration files
+- name: Deploy Openbox configuration
   ansible.builtin.copy:
-    src: "{{ conffiles.name }}"
-    dest: "/home/{{ kiosk_user }}/{{ conffiles.dest }}/{{ conffiles.name }}"
+    src: rc.xml
+    dest: "/home/{{ kiosk_user }}/.config/openbox/rc.xml"
     owner: "{{ kiosk_user }}"
     group: "{{ kiosk_user }}"
-    mode: "{{ conffiles.mode | default('0644') }}"
-  loop:
-    - name: "xfce4-power-manager.xml"
-      dest: ".config/xfce4/xfconf/xfce-perchannel-xml"
-    - name: "xfce4-desktop.xml"
-      dest: ".config/xfce4/xfconf/xfce-perchannel-xml"
-    - name: "xfce4-panel.xml"
-      dest: ".config/xfce4/xfconf/xfce-perchannel-xml"
-    - name: "unclutter.desktop"
-      dest: ".config/autostart"
-  loop_control:
-    loop_var: conffiles
-  notify: Restart lightdm
-
-- name: Configure LightDM autologin
-  ansible.builtin.template:
-    src: lightdm.conf.j2
-    dest: /etc/lightdm/lightdm.conf
-    owner: root
-    group: root
     mode: "0644"
-  notify: Restart lightdm
+  notify: Restart kiosk X session
 
-- name: Deploy autostart template entries
-  ansible.builtin.template:
-    src: "{{ conftemplates.name }}.j2"
-    dest: "{{ conftemplates.dest }}/{{ conftemplates.name }}"
+- name: Configure shell autologin for X
+  ansible.builtin.copy:
+    content: |
+      # Auto-start X if not already running
+      if [[ -z "$DISPLAY" ]] && [[ "$XDG_VTNR" -eq 1 ]]; then
+        exec startx -- :0 vt7
+      fi
+    dest: "/home/{{ kiosk_user }}/.bash_login"
     owner: "{{ kiosk_user }}"
     group: "{{ kiosk_user }}"
-    mode: "{{ conftemplates.mode | default('0644') }}"
-  loop:
-    - name: feh-screensaver.desktop
-      dest: "/home/{{ kiosk_user }}/.config/autostart"
-    - name: feh-screensaver.sh
-      dest: "/home/{{ kiosk_user }}"
-      mode: "0755"
-  loop_control:
-    loop_var: conftemplates
-  notify: Restart lightdm
+    mode: "0644"
+  notify: Restart kiosk X session
+
+- name: Deploy X initialization script
+  ansible.builtin.template:
+    src: xinitrc.j2
+    dest: "/home/{{ kiosk_user }}/.xinitrc"
+    owner: "{{ kiosk_user }}"
+    group: "{{ kiosk_user }}"
+    mode: "0755"
+  notify: Restart kiosk X session
+
+- name: Deploy feh screensaver script
+  ansible.builtin.template:
+    src: feh-screensaver.sh.j2
+    dest: "/home/{{ kiosk_user }}/feh-screensaver.sh"
+    owner: "{{ kiosk_user }}"
+    group: "{{ kiosk_user }}"
+    mode: "0755"
+  notify: Restart kiosk X session
   tags: [feh]
-
-- name: Deploy Chromium kiosk autostart entry
-  ansible.builtin.template:
-    src: "chromium-kiosk.desktop.j2"
-    dest: "/home/{{ kiosk_user }}/.config/autostart/chromium-kiosk.desktop"
-    owner: "{{ kiosk_user }}"
-    group: "{{ kiosk_user }}"
-    mode: "0640"
-  when: kiosk_chromium_enabled
-  notify: Restart lightdm
-  tags: [kiosk]
-
-- name: Remove Chromium kiosk autostart entry
-  ansible.builtin.file:
-    path: "/home/{{ kiosk_user }}/.config/autostart/chromium-kiosk.desktop"
-    state: absent
-  when: not kiosk_chromium_enabled
-  notify: Restart lightdm
-  tags: [kiosk]
 
 - name: Samba sync setup
   when: kiosk_samba_enabled

@@ -3,7 +3,7 @@ IDLE_TIME={{ kiosk_chromium_enabled | ternary(kiosk_idle_ms, 0) }}
 DELAY_TIME={{ kiosk_slideshow_delay  }}
 FILELIST="{{ kiosk_slideshow_filelist }}"
 
-PICTURES_DIR="{{ kiosk_slideshow_image_dir }}"
+PICTURES_DIR="/home/{{ kiosk_user }}/{{ kiosk_slideshow_image_dir }}"
 DIR_SIGNATURE=0
 
 ORIENTATION="{{ kiosk_slideshow_orientation }}"

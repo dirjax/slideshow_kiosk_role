@@ -1,5 +1,6 @@
 ---
-- name: Restart lightdm
-  ansible.builtin.service:
-    name: lightdm
-    state: restarted
+- name: Restart kiosk X session
+  ansible.builtin.shell: |
+    pkill -u {{ kiosk_user }} openbox || true
+  become: yes
+  changed_when: false
