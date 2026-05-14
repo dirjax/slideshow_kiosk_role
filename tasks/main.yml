@@ -24,18 +24,6 @@
     shell: /bin/bash
     create_home: true
 
-- name: Create autologin configuration for getty
-  ansible.builtin.copy:
-    content: |
-      [Service]
-      ExecStart=
-      ExecStart=-/sbin/agetty --autologin {{ kiosk_user }} --noclear %I $TERM
-    dest: "/etc/systemd/system/getty@tty1.service"
-    owner: root
-    group: root
-    mode: "0644"
-  notify: Restart getty service
-
 - name: Ensure required directories exists
   ansible.builtin.file:
     path: "/home/{{ kiosk_user }}/{{ directories }}"
@@ -48,48 +36,50 @@
     - "{{ kiosk_slideshow_image_dir }}" 
   loop_control:
     loop_var: directories
-  tags: [kiosk, feh]
 
-- name: Deploy Openbox configuration
+- name: Deploy configuration files
   ansible.builtin.copy:
-    src: rc.xml
-    dest: "/home/{{ kiosk_user }}/.config/openbox/rc.xml"
-    owner: "{{ kiosk_user }}"
-    group: "{{ kiosk_user }}"
-    mode: "0644"
-  notify: Restart kiosk X session
+    src: "{{ config_file.src }}"
+    dest: "{{ config_file.dest }}"
+    owner: "{{ config_file.owner|default(kiosk_user) }}"
+    group: "{{ config_file.group|default(kiosk_user) }}"
+    mode: "{{ config_file.mode|default('0644') }}"
+  loop:
+    - {"src": "rc.xml", "dest": "/home/{{ kiosk_user }}/.config/openbox/rc.xml"}
+    - {"src": "bash_login", "dest": "/home/{{ kiosk_user }}/.bash_login"}
+  loop_control:
+    loop_var: config_file
+  notify: Restart getty service
 
-- name: Configure shell autologin for X
-  ansible.builtin.copy:
-    content: |
-      # Auto-start X if not already running
-      if [[ -z "$DISPLAY" ]] && [[ "$XDG_VTNR" -eq 1 ]]; then
-        exec startx -- :0 vt7
-      fi
-    dest: "/home/{{ kiosk_user }}/.bash_login"
-    owner: "{{ kiosk_user }}"
-    group: "{{ kiosk_user }}"
-    mode: "0644"
-  notify: Restart kiosk X session
-
-- name: Deploy X initialization script
+- name: Deploy configuration templates
   ansible.builtin.template:
-    src: xinitrc.j2
-    dest: "/home/{{ kiosk_user }}/.xinitrc"
-    owner: "{{ kiosk_user }}"
-    group: "{{ kiosk_user }}"
-    mode: "0755"
-  notify: Restart kiosk X session
+    src: "{{ config_template.src }}"}
+    dest: "{{ config_template.dest }}"
+    owner: "{{ config_template.owner|default(kiosk_user) }}"
+    group: "{{ config_template.group|default(kiosk_user) }}"
+    mode: "{{ config_template.mode|default('0755') }}"
+  loop:
+    - {"src": "getty_service.j2", "dest": "/etc/systemd/system/getty@tty1.service", owner: "root", group: "root"}
+    - {"src": "xinitrc.j2", "dest": "/home/{{ kiosk_user }}/.xinitrc"}
+    - {"src": "feh-screensaver.sh.j2", "dest": "/home/{{ kiosk_user }}/feh-screensaver.sh", mode: "0755"}
+    - {"src": "90-monitor.conf.j2", "dest": "/usr/share/X11/xorg.conf.d/90-monitor.conf", owner: "root", group: "root"}
+  loop_control:
+    loop_var: config_templates
+  notify: Restart getty service
 
-- name: Deploy feh screensaver script
-  ansible.builtin.template:
-    src: feh-screensaver.sh.j2
-    dest: "/home/{{ kiosk_user }}/feh-screensaver.sh"
-    owner: "{{ kiosk_user }}"
-    group: "{{ kiosk_user }}"
-    mode: "0755"
-  notify: Restart kiosk X session
-  tags: [feh]
+- name: enable dsi for waveshare 10 inch display
+  when: kiosk_display_type == "dsi-waveshare"
+  ansible.builtin.blockinfile:
+    path: /boot/firmware/config.txt
+    create: true
+    insertafter: "dtoverlay=v4c-kms-v3d"
+    block: |
+      dtoverlay=vc4-kms-dsi-waveshare-panel-v2,10_1_inch_a
+      display_default_lcd=1
+      max_framebuffers=2
+      framebuffer_width=800
+      framebuffer_height=1280
+  notify: Restart getty service
 
 - name: Samba sync setup
   when: kiosk_samba_enabled
