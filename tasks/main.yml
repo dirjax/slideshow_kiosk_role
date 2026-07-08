@@ -68,7 +68,7 @@
   notify: Restart getty service
 
 - name: enable dsi for waveshare 10 inch display
-  when: kiosk_display_type == "dsi-waveshare"
+  when: kiosk_display_type|d("hdmi") == "dsi-waveshare"
   ansible.builtin.blockinfile:
     path: /boot/firmware/config.txt
     insertafter: "dtoverlay=vc4-kms-v3d"
