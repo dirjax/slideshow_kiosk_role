@@ -91,6 +91,22 @@ For full autologin testing, console access is required to reboot the system.
 - Unclutter to hide mouse cursor
 - Power management via xset (no screen blanking/DPMS)
 
+## Issues and fixes:
+
+## pi zero 1 needs extra settings
+# /etc/X11/Xwrapper.config
+#   allowed_users=anybody
+#   needs_root_rights=yes
+#
+# usermod -aG tty,video,input,render kiosk
+#
+# /etc/X11/xorg.conf.d/99-fbdev.conf
+#   Section "Device"
+#       Identifier "Framebuffer"
+#       Driver     "fbdev"
+#       Option     "fbdev" "/dev/fb0"
+#   EndSection 
+
 ## Author
 
 dirjax
